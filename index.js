@@ -5,7 +5,10 @@ const port =process.env.PORT || 5000;
 require('dotenv').config()
 
 // middleware
-app.use(cors());
+app.use(cors({
+  origin: "http://localhost:5173", // Your frontend URL
+  credentials: true, // Allow credentials (cookies, authorization headers, etc.)
+}));
 app.use(express.json());
 
 app.get('/', async(req,res)=>{
@@ -33,10 +36,25 @@ async function run() {
     // Send a ping to confirm a successful connection
     const database = client.db("bossRestarunt");
     const menuCollaction = database.collection("menu");
+    const cardCollaction=database.collection("card");
 
     app.get("/menu",async(req,res)=>{
         const result=await menuCollaction.find().toArray();
         res.send(result);
+    })
+
+    app.get("/card",async (req,res)=>{
+      const email=req.query.email;
+      const query={email: email}
+      console.log(query);
+      const result=await cardCollaction.find(query).toArray();
+      // console.log(result);
+      res.send(result);
+    })
+    app.post("/card",async(req,res)=>{
+      const cardItem=req.body;
+      const result= await cardCollaction.insertOne(cardItem);
+      res.send(result)
     })
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");

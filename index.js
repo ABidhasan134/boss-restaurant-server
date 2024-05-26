@@ -17,7 +17,7 @@ app.get('/', async(req,res)=>{
 
 
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.il352b3.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -37,6 +37,7 @@ async function run() {
     const database = client.db("bossRestarunt");
     const menuCollaction = database.collection("menu");
     const cardCollaction=database.collection("card");
+    const usersCollaction=database.collection("users");
 
     app.get("/menu",async(req,res)=>{
         const result=await menuCollaction.find().toArray();
@@ -46,7 +47,7 @@ async function run() {
     app.get("/card",async (req,res)=>{
       const email=req.query.email;
       const query={email: email}
-      console.log(query);
+      // console.log(query);
       const result=await cardCollaction.find(query).toArray();
       // console.log(result);
       res.send(result);
@@ -55,6 +56,17 @@ async function run() {
       const cardItem=req.body;
       const result= await cardCollaction.insertOne(cardItem);
       res.send(result)
+    })
+    app.delete("/card/:id",async(req,res)=>{
+      const id=req.params.id;
+      const query={_id: new ObjectId(id) }
+      // console.log(query);
+      const result=await cardCollaction.deleteOne(query);
+      res.send(result);
+    })
+    app.post('/users',async(req,res)=>{
+      const user=req.body;
+      console.log(user);
     })
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");

@@ -1,6 +1,7 @@
 const express= require('express');
 const app =  express();
 const cors= require('cors');
+const jwt = require('jsonwebtoken');
 const port =process.env.PORT || 5000;
 require('dotenv').config()
 
@@ -39,11 +40,27 @@ async function run() {
     const cardCollaction=database.collection("card");
     const usersCollaction=database.collection("users");
 
+    app.post("/jwt",async(req,res)=>{
+      const user=req.body;
+      const token = jwt.sign(user,process.env.ACCESS_TOKEN,{expiresIn: '1h'});
+      res.send(token);
+      // console.log(req.headers);
+    })
+    // varyfy middleware of jwt
+    const varifyToken=(req,res,next)=>{
+      console.log("inside the varifyToken",req.headers);
+      if(!req.headers.Authorization){
+        return res.status(401).send({massage: "forbidden access"});
+      }
+      const token = req.headers.Authorization.split(' ')[1];
+      // next();
+    }
+    // MENU RELATED API
     app.get("/menu",async(req,res)=>{
         const result=await menuCollaction.find().toArray();
         res.send(result);
     })
-
+    // card reladet apis or order related apis
     app.get("/card",async (req,res)=>{
       const email=req.query.email;
       const query={email: email}
@@ -64,10 +81,42 @@ async function run() {
       const result=await cardCollaction.deleteOne(query);
       res.send(result);
     })
+    // user related apis
+    app.get("/users",varifyToken, async(req,res)=>{
+      const result= await usersCollaction.find().toArray();
+      res.send(result);
+      // console.log(req.headers);
+    })
     app.post('/users',async(req,res)=>{
       const user=req.body;
       console.log(user);
+      const result=await usersCollaction.insertOne(user);
+      res.send(result);
     })
+    app.delete("/users/:id",async(req,res)=>{
+      const id=req.params.id;
+      const query={_id: new ObjectId(id)}
+      // console.log(id);
+      const result=await usersCollaction.deleteOne(query);
+      res.send(result);
+    })
+    // admin related apis
+    // app.patch("users/admin/:id",async (req,res)=>{
+    //   const id =req.params.id;
+    //   console.log(id);
+    // })
+    app.patch("/users/admin/:id", async (req, res) => {
+      const id = req.params.id;
+      // console.log(id);
+      const filter={_id: new ObjectId(id)}
+      const updatedDoc={
+        $set: {
+          role: "admin"
+        }
+      }
+     const result=await usersCollaction.updateOne(filter,updatedDoc);
+     res.send(result);
+    });
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {

@@ -47,13 +47,34 @@ async function run() {
       // console.log(req.headers);
     })
     // varyfy middleware of jwt
-    const varifyToken=(req,res,next)=>{
-      console.log("inside the varifyToken",req.headers);
-      if(!req.headers.Authorization){
-        return res.status(401).send({massage: "forbidden access"});
+    const verifyToken = (req, res, next) => {
+      console.log("inside the verifyToken", req.headers.authorization);
+      
+      const authHeader = req.headers.authorization || req.headers.Authorization;
+    
+      if (!authHeader) {
+        return res.status(401).send({ message: "Forbidden access" });
       }
-      const token = req.headers.Authorization.split(' ')[1];
-      // next();
+    
+      const token = authHeader.split(' ')[1];
+    
+      jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: "Forbidden access" });
+        }
+        // we set this email as decoded
+        req.decoded = decoded;
+        next();
+      });
+    }
+    const verifyAdmin = async(req,res,next)=>{
+      const email=req.decoded.email;
+      const query={email: email};
+      const user=await usersCollaction.findOne(query);
+      const isAdmin=user?.role==="admin";
+      if(!isAdmin){
+        return res.status(403).send({massage: "forbidden access"})
+      }
     }
     // MENU RELATED API
     app.get("/menu",async(req,res)=>{
@@ -82,18 +103,18 @@ async function run() {
       res.send(result);
     })
     // user related apis
-    app.get("/users",varifyToken, async(req,res)=>{
+    app.get("/users", async(req,res)=>{
       const result= await usersCollaction.find().toArray();
       res.send(result);
       // console.log(req.headers);
     })
-    app.post('/users',async(req,res)=>{
+    app.post('/users',verifyToken,verifyAdmin,async(req,res)=>{
       const user=req.body;
       console.log(user);
       const result=await usersCollaction.insertOne(user);
       res.send(result);
     })
-    app.delete("/users/:id",async(req,res)=>{
+    app.delete("/users/:id",verifyToken,verifyAdmin,async(req,res)=>{
       const id=req.params.id;
       const query={_id: new ObjectId(id)}
       // console.log(id);
@@ -105,7 +126,7 @@ async function run() {
     //   const id =req.params.id;
     //   console.log(id);
     // })
-    app.patch("/users/admin/:id", async (req, res) => {
+    app.patch("/users/admin/:id",verifyToken,verifyAdmin, async (req, res) => {
       const id = req.params.id;
       // console.log(id);
       const filter={_id: new ObjectId(id)}
@@ -117,6 +138,22 @@ async function run() {
      const result=await usersCollaction.updateOne(filter,updatedDoc);
      res.send(result);
     });
+    // chacheking admin
+    app.get("/users/admin/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "unauthorized access" });
+      }
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      let admin = true;
+      if (user) {
+        admin = user.role === "admin";
+      }
+      res.send({ admin });
+    });
+    
+    
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {

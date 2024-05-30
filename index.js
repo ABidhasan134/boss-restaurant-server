@@ -48,7 +48,7 @@ async function run() {
     })
     // varyfy middleware of jwt
     const verifyToken = (req, res, next) => {
-      console.log("inside the verifyToken", req.headers.authorization);
+      // console.log("inside the verifyToken", req.headers.authorization);
       
       const authHeader = req.headers.authorization || req.headers.Authorization;
     
@@ -81,6 +81,10 @@ async function run() {
         const result=await menuCollaction.find().toArray();
         res.send(result);
     })
+    app.post("/menu",async(req,res)=>{
+      const menuItem=req.body;
+      console.log(menuItem);
+    })
     // card reladet apis or order related apis
     app.get("/card",async (req,res)=>{
       const email=req.query.email;
@@ -110,7 +114,7 @@ async function run() {
     })
     app.post('/users',verifyToken,verifyAdmin,async(req,res)=>{
       const user=req.body;
-      console.log(user);
+      // console.log(user);
       const result=await usersCollaction.insertOne(user);
       res.send(result);
     })
@@ -145,10 +149,10 @@ async function run() {
         return res.status(403).send({ message: "unauthorized access" });
       }
       const query = { email: email };
-      const user = await usersCollection.findOne(query);
-      let admin = true;
-      if (user) {
-        admin = user.role === "admin";
+      const user = await usersCollaction.findOne(query);
+      let admin = false; // Default to false if user or role is not found
+      if (user && user.role === "admin") {
+        admin = true;
       }
       res.send({ admin });
     });

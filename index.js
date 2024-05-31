@@ -75,15 +75,51 @@ async function run() {
       if(!isAdmin){
         return res.status(403).send({massage: "forbidden access"})
       }
+      next();
     }
     // MENU RELATED API
     app.get("/menu",async(req,res)=>{
         const result=await menuCollaction.find().toArray();
         res.send(result);
     })
-    app.post("/menu",async(req,res)=>{
-      const menuItem=req.body;
-      console.log(menuItem);
+    app.get("/menu/:id",async(req,res)=>{
+      const id= req.params.id;
+      // console.log(id);
+      const query={_id: new ObjectId(id)};
+      const result=await menuCollaction.findOne();
+      res.send(result)
+    })
+    app.patch("/menu/:id",async(req,res)=>{
+      const id =req.params.id;
+      const filter={_id: new ObjectId(id)};
+      const updateDoc={
+        $set:{
+          name: req.body.name,
+          category: req.body.category,
+          price: req.body.price,
+          recipe: req.body.recipe,
+          image: req.body.image
+        }
+      }
+      const result=await menuCollaction.updateOne(filter,updateDoc);
+      res.send(result);
+      // const text=req.body;
+      console.log(result);
+
+    })
+    app.post("/menu",verifyToken,verifyAdmin,async(req,res)=>{
+      const menuItem = req.body;
+      // console.log(menuItem);
+      const result=await menuCollaction.insertOne(menuItem);
+      res.send(result);
+    })
+    app.delete("/menu/:id", async(req,res)=>{
+      const id=req.params.id;
+      // console.log(id);
+      const query={_id: new ObjectId(id)}
+      // console.log(id);
+      const result=await menuCollaction.deleteOne(query);
+      res.send(result)
     })
     // card reladet apis or order related apis
     app.get("/card",async (req,res)=>{

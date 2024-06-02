@@ -58,7 +58,7 @@ async function initializeMongoClient() {
           return res.status(401).send({ message: "Forbidden access" });
         }
         req.decoded = decoded;
-        console.log(decoded);
+        // console.log("Decoded Token",decoded);
         next();
       });
     };
@@ -208,12 +208,69 @@ async function initializeMongoClient() {
       res.send({paymentResult,deleteResult});
     })
     
-    app.get('/payments/:email',async(req,res)=>{
+    app.get('/payments/:email',verifyToken,async(req,res)=>{
       const query={email: req.params.email}
+      console.log(req.decoded.email );
       if(req.params.email!==req.decoded.email){
         return res.status(403).send({massge: "forbidden access"});
       }
       const result=await paymentsCollection.find().toArray();
+      res.send(result)
+
+    })
+
+    // state annalysise
+    app.get("/admin-state",async(req,res)=>{
+      const user=await usersCollection.estimatedDocumentCount();
+      const menuItems=await menuCollection.estimatedDocumentCount();
+      const order=await paymentsCollection.estimatedDocumentCount();
+
+      const payment=await paymentsCollection.find().toArray();
+      // const revenue=payment.reduce((totalRevenue,payment)=>totalRevenue+payment.price,600)
+
+      const result= await paymentsCollection.aggregate([
+        {
+          $group:{
+            _id:null,
+            totalRevenue: {
+              $sum:'$price'
+            },
+          }
+        }
+      ]).toArray();
+
+      const revenue= result.length>0?result[0].totalRevenue: 0
+      res.send({user,menuItems,order,revenue,payment})
+    })
+
+    // useing pipeline aggregator
+    app.get("/order-state",async(req,res)=>{
+      const result=await paymentsCollection.aggregate([
+        {
+          $unwind: '$itemCardId'
+        },
+        {
+          $lookup:{
+            from: 'menu',
+            localfield:'itemCardId',
+            foreignField: '_id',
+            as: 'onnoItems' 
+          },
+          
+        },
+        {
+          $unwind: '$onnoItems'
+        },
+{
+  $group:{
+    _id: '$onnoItems.catagory',
+    quantity:{
+      $sum: 1
+    }
+  }
+}
+      ]).toArray();
+      res.send(result);
 
     })
 
